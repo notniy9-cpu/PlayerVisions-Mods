@@ -14,7 +14,6 @@ public class PlayerListScreen extends Screen {
     private final Screen parent;
     private PlayerList list;
 
-    // Массив доступных цветов (Красный, Зеленый, Синий, Желтый, Белый)
     private static final int[] COLORS = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFFFFFF};
     private static final String[] COLOR_NAMES = {"Красный", "Зеленый", "Синий", "Желтый", "Белый"};
 
@@ -25,6 +24,7 @@ public class PlayerListScreen extends Screen {
 
     @Override
     protected void init() {
+        // Задаем ширину контейнера списка на весь экран для предотвращения сужения кнопок
         this.list = new PlayerList(this.minecraft, this.width, this.height, 32, this.height - 40, 24);
         this.addWidget(this.list);
 
@@ -55,9 +55,16 @@ public class PlayerListScreen extends Screen {
             }
         }
 
+        // Делаем строку шире, чтобы элементы распределялись свободно
+        @Override
+        public int getRowWidth() {
+            return 310;
+        }
+
         class Entry extends ObjectSelectionList.Entry<Entry> {
             private final String playerName;
-            private final Button selectButton;
+            private final Button espButton;
+            private final Button radarButton;
             private final Button colorButton;
             private int currentColorIdx = 0;
 
@@ -65,18 +72,31 @@ public class PlayerListScreen extends Screen {
                 this.playerName = name;
                 String key = name.toLowerCase();
 
-                this.selectButton = Button.builder(
-                        Component.literal(PlayerVisionMod.targetPlayers.contains(key) ? "Убрать" : "Выбрать"),
+                this.espButton = Button.builder(
+                        Component.literal(PlayerVisionMod.targetPlayers.contains(key) ? "Бокс: ДА" : "Бокс: НЕТ"),
                         button -> {
                             if (PlayerVisionMod.targetPlayers.contains(key)) {
                                 PlayerVisionMod.targetPlayers.remove(key);
-                                button.setMessage(Component.literal("Выбрать"));
+                                button.setMessage(Component.literal("Бокс: НЕТ"));
                             } else {
                                 PlayerVisionMod.targetPlayers.add(key);
-                                button.setMessage(Component.literal("Убрать"));
+                                button.setMessage(Component.literal("Бокс: ДА"));
                             }
                         }
-                ).bounds(0, 0, 60, 20).build();
+                ).bounds(0, 0, 70, 20).build();
+
+                this.radarButton = Button.builder(
+                        Component.literal(PlayerVisionMod.radarPlayers.contains(key) ? "Метка: ДА" : "Метка: НЕТ"),
+                        button -> {
+                            if (PlayerVisionMod.radarPlayers.contains(key)) {
+                                PlayerVisionMod.radarPlayers.remove(key);
+                                button.setMessage(Component.literal("Метка: НЕТ"));
+                            } else {
+                                PlayerVisionMod.radarPlayers.add(key);
+                                button.setMessage(Component.literal("Метка: ДА"));
+                            }
+                        }
+                ).bounds(0, 0, 70, 20).build();
 
                 this.colorButton = Button.builder(
                         Component.literal(getCurrentColorName(key)),
@@ -85,11 +105,10 @@ public class PlayerListScreen extends Screen {
                             PlayerVisionMod.playerColors.put(key, COLORS[currentColorIdx]);
                             button.setMessage(Component.literal(COLOR_NAMES[currentColorIdx]));
                         }
-                ).bounds(0, 0, 75, 20).build();
+                ).bounds(0, 0, 65, 20).build();
 
-                // Инициализация индекса цвета, если он уже был сохранен
                 if (!PlayerVisionMod.playerColors.containsKey(key)) {
-                    PlayerVisionMod.playerColors.put(key, COLORS[0]); // По умолчанию красный
+                    PlayerVisionMod.playerColors.put(key, COLORS[0]);
                 }
             }
 
@@ -106,20 +125,28 @@ public class PlayerListScreen extends Screen {
 
             @Override
             public void render(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
-                graphics.drawString(PlayerListScreen.this.font, this.playerName, left + 10, top + 6, 0xFFFFFF);
+                // Ник гарантированно защищен от наложения, кнопки сдвинуты в крайний правый сектор
+                graphics.drawString(PlayerListScreen.this.font, this.playerName, left + 5, top + 6, 0xFFFFFF);
 
-                this.colorButton.setX(left + width - 150);
+                // Абсолютное позиционирование с фиксированными отступами друг от друга
+                this.colorButton.setX(left + width - 215);
                 this.colorButton.setY(top);
                 this.colorButton.render(graphics, mouseX, mouseY, partialTick);
 
-                this.selectButton.setX(left + width - 70);
-                this.selectButton.setY(top);
-                this.selectButton.render(graphics, mouseX, mouseY, partialTick);
+                this.espButton.setX(left + width - 145);
+                this.espButton.setY(top);
+                this.espButton.render(graphics, mouseX, mouseY, partialTick);
+
+                this.radarButton.setX(left + width - 70);
+                this.radarButton.setY(top);
+                this.radarButton.render(graphics, mouseX, mouseY, partialTick);
             }
 
             @Override
             public boolean mouseClicked(double mouseX, double mouseY, int button) {
-                return this.selectButton.mouseClicked(mouseX, mouseY, button) || this.colorButton.mouseClicked(mouseX, mouseY, button);
+                return this.espButton.mouseClicked(mouseX, mouseY, button) ||
+                        this.radarButton.mouseClicked(mouseX, mouseY, button) ||
+                        this.colorButton.mouseClicked(mouseX, mouseY, button);
             }
 
             @Override

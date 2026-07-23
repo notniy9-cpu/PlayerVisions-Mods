@@ -16,49 +16,54 @@ public class VisionScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
+        // Кнопка: Общая подсветка игроков
         this.addRenderableWidget(Button.builder(
                 Component.literal("Общая подсветка: " + (PlayerVisionMod.isPlayersGlow ? "ВКЛ" : "ВЫКЛ")),
                 button -> {
                     PlayerVisionMod.isPlayersGlow = !PlayerVisionMod.isPlayersGlow;
                     button.setMessage(Component.literal("Общая подсветка: " + (PlayerVisionMod.isPlayersGlow ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 70, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 60, 200, 20).build());
 
+        // Кнопка: Сквозь блоки
         this.addRenderableWidget(Button.builder(
                 Component.literal("Сквозь блоки: " + (PlayerVisionMod.seeThroughBlocks ? "ВКЛ" : "ВЫКЛ")),
                 button -> {
                     PlayerVisionMod.seeThroughBlocks = !PlayerVisionMod.seeThroughBlocks;
                     button.setMessage(Component.literal("Сквозь блоки: " + (PlayerVisionMod.seeThroughBlocks ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 45, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 35, 200, 20).build());
 
+        // Кнопка: Включение меток радара
         this.addRenderableWidget(Button.builder(
                 Component.literal("Метки и Дистанция: " + (PlayerVisionMod.isTagsEnabled ? "ВКЛ" : "ВЫКЛ")),
                 button -> {
                     PlayerVisionMod.isTagsEnabled = !PlayerVisionMod.isTagsEnabled;
                     button.setMessage(Component.literal("Метки: " + (PlayerVisionMod.isTagsEnabled ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 20, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 10, 200, 20).build());
 
-        // Новая кнопка перехода к детальным настройкам меток
+        // Дальность 3D ESP
         this.addRenderableWidget(Button.builder(
-                Component.literal("Настройка вида меток..."),
-                button -> this.minecraft.setScreen(new TagConfigScreen(this))
-        ).bounds(centerX - 100, centerY + 5, 200, 20).build());
-
-        this.addRenderableWidget(Button.builder(
-                Component.literal("Дистанция работы: " + PlayerVisionMod.maxDistance + " б."),
+                Component.literal("Дальность ESP: " + PlayerVisionMod.maxDistance + " б."),
                 button -> {
                     PlayerVisionMod.maxDistance += 32;
                     if (PlayerVisionMod.maxDistance > 356) PlayerVisionMod.maxDistance = 28;
-                    button.setMessage(Component.literal("Дистанция работы: " + PlayerVisionMod.maxDistance + " б."));
+                    button.setMessage(Component.literal("Дальность ESP: " + PlayerVisionMod.maxDistance + " б."));
                 }
-        ).bounds(centerX - 100, centerY + 30, 200, 20).build());
+        ).bounds(centerX - 100, centerY + 15, 200, 20).build());
 
+        // Переход в подменю детальной настройки меток
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Настройка вида меток..."),
+                button -> this.minecraft.setScreen(new TagConfigScreen(this))
+        ).bounds(centerX - 100, centerY + 40, 200, 20).build());
+
+        // Переход в список игроков
         this.addRenderableWidget(Button.builder(
                 Component.literal("Управление игроками и цветом"),
                 button -> this.minecraft.setScreen(new PlayerListScreen(this))
-        ).bounds(centerX - 100, centerY + 55, 200, 20).build());
+        ).bounds(centerX - 100, centerY + 65, 200, 20).build());
     }
 
     @Override

@@ -18,16 +18,24 @@ public class TagConfigScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        // Переключатель показа высоты (Y координаты)
+        // ПЕРЕМЕЩЕННАЯ СЮДА КНОПКА НАСТРОЙКИ ДАЛЬНОСТИ СТРЕЛОК
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Дальность меток: " + PlayerVisionMod.maxTagDistance + " б."),
+                button -> {
+                    PlayerVisionMod.maxTagDistance += 32;
+                    if (PlayerVisionMod.maxTagDistance > 356) PlayerVisionMod.maxTagDistance = 28;
+                    button.setMessage(Component.literal("Дальность меток: " + PlayerVisionMod.maxTagDistance + " б."));
+                }
+        ).bounds(centerX - 100, centerY - 40, 200, 20).build());
+
         this.addRenderableWidget(Button.builder(
                 Component.literal("Показывать высоту: " + (PlayerVisionMod.showHeight ? "ДА" : "НЕТ")),
                 button -> {
                     PlayerVisionMod.showHeight = !PlayerVisionMod.showHeight;
                     button.setMessage(Component.literal("Показывать высоту: " + (PlayerVisionMod.showHeight ? "ДА" : "НЕТ")));
                 }
-        ).bounds(centerX - 100, centerY - 30, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 15, 200, 20).build());
 
-        // Циклическое изменение размера шрифта и стрелок
         this.addRenderableWidget(Button.builder(
                 Component.literal("Размер меток: " + PlayerVisionMod.tagScale + "x"),
                 button -> {
@@ -37,11 +45,11 @@ public class TagConfigScreen extends Screen {
                     else PlayerVisionMod.tagScale = 1.0f;
                     button.setMessage(Component.literal("Размер меток: " + PlayerVisionMod.tagScale + "x"));
                 }
-        ).bounds(centerX - 100, centerY - 5, 200, 20).build());
+        ).bounds(centerX - 100, centerY + 10, 200, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Готово"),
                 button -> this.minecraft.setScreen(this.parent)
-        ).bounds(centerX - 100, centerY + 30, 200, 20).build());
+        ).bounds(centerX - 100, centerY + 45, 200, 20).build());
     }
 
     @Override

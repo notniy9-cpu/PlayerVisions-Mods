@@ -22,17 +22,18 @@ public class PlayerVisionMod {
     public static boolean isPlayersGlow = false;
     public static boolean ignoreSpectators = true;
     public static boolean seeThroughBlocks = true;
-    public static int maxDistance = 128; // По умолчанию увеличен радиус
-    public static boolean isTagsEnabled = false;
 
-    // Новые настройки кастомизации меток
+    public static int maxDistance = 64;       // Дальность для 3D боксов
+    public static int maxTagDistance = 128;   // Отдельная регулируемая дальность для меток (стрелочек)
+
+    public static boolean isTagsEnabled = false;
     public static boolean showHeight = true;
-    public static float tagScale = 1.0f; // Размер метки (0.5 до 2.0)
+    public static float tagScale = 1.0f;
 
     public static Map<String, Integer> playerColors = new HashMap<>();
-    public static Set<String> targetPlayers = new HashSet<>();
+    public static Set<String> targetPlayers = new HashSet<>();       // Игроки для 3D-подсветки
+    public static Set<String> radarPlayers = new HashSet<>();        // Игроки специально для меток-стрелок
 
-    // Локальный кэш позиций для обхода серверного лимита в 50 блоков
     public static Map<String, Vec3> FarPositionsCache = new HashMap<>();
 
     public static final KeyMapping OPEN_MENU_KEY = new KeyMapping(
