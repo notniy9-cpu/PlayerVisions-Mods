@@ -15,8 +15,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -27,11 +25,10 @@ import org.joml.Matrix4f;
 
 public class RenderEventHandler {
 
-    // 1. ИСПРАВЛЕННЫЙ 3D ESP (СТОПРОЦЕНТНО ВИДНО СКВОЗЬ СТЕНЫ)
     @SubscribeEvent
     public void onRenderLevel(RenderLevelStageEvent event) {
-        // Используем стадию после отрисовки частиц, когда весь мир уже построен
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+        // Переключение на этап после рендеринга блочных сущностей (наиболее стабильная точка для перекрытия буфера)
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
@@ -40,73 +37,51 @@ public class RenderEventHandler {
         PoseStack poseStack = event.getPoseStack();
 
         poseStack.pushPose();
-        // Сдвигаем матрицу мира относительно камеры игрока
         poseStack.translate(-camera.x, -camera.y, -camera.z);
 
-        // Отключаем проверку глубины (Z-буфер) на аппаратном уровне OpenGL
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
+        if (PlayerVisionMod.seeThroughBlocks) {
+            RenderSystem.disableDepthTest();
+            RenderSystem.depthMask(false);
+        }
+
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        // Создаем независимый буфер для мгновенного вывода линий поверх блоков
         MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
         VertexConsumer buffer = bufferSource.getBuffer(RenderType.lines());
 
-        for (Entity entity : mc.level.entitiesForRendering()) {
-            if (entity == mc.player) continue;
+        for (Player player : mc.level.players()) {
+            if (player == mc.player) continue;
+            if (PlayerVisionMod.ignoreSpectators && player.isSpectator()) continue;
 
-            double dist = mc.player.distanceTo(entity);
+            double dist = mc.player.distanceTo(player);
             if (dist > PlayerVisionMod.maxDistance) continue;
 
-            boolean shouldDraw = false;
-            float r = 0.0F, g = 1.0F, b = 0.0F; // Зеленый по умолчанию
+            String key = player.getName().getString().toLowerCase();
+            boolean isChosen = PlayerVisionMod.targetPlayers.contains(key);
 
-            // Проверка игроков
-            if (entity instanceof Player player) {
-                if (PlayerVisionMod.ignoreSpectators && player.isSpectator()) continue;
+            if (PlayerVisionMod.isPlayersGlow || isChosen) {
+                // Извлечение индивидуального цвета игрока из карты настроек
+                int colorRGB = PlayerVisionMod.playerColors.getOrDefault(key, 0xFF0000);
+                float r = ((colorRGB >> 16) & 0xFF) / 255.0F;
+                float g = ((colorRGB >> 8) & 0xFF) / 255.0F;
+                float b = (colorRGB & 0xFF) / 255.0F;
 
-                if (PlayerVisionMod.isPlayersGlow || PlayerVisionMod.targetPlayers.contains(player.getName().getString().toLowerCase())) {
-                    shouldDraw = true;
-                    r = 1.0F; g = 0.0F; b = 0.0F; // Игроки — Красные
-                }
-            }
-            // Проверка предметов (вещей на земле)
-            else if (entity instanceof ItemEntity item) {
-                String itemName = item.getItem().getDescriptionId().toLowerCase();
-                boolean isTargetItem = false;
-
-                for (String savedItem : PlayerVisionMod.targetItems) {
-                    if (itemName.contains(savedItem)) {
-                        isTargetItem = true;
-                        break;
-                    }
-                }
-
-                if (PlayerVisionMod.isItemsGlow || isTargetItem) {
-                    shouldDraw = true;
-                    r = 1.0F; g = 1.0F; b = 0.0F; // Предметы — Желтые
-                }
-            }
-
-            // Отрисовка идеального 3D-бокса вокруг цели
-            if (shouldDraw) {
-                AABB box = entity.getBoundingBox();
+                AABB box = player.getBoundingBox();
                 LevelRenderer.renderLineBox(poseStack, buffer, box, r, g, b, 1.0F);
             }
         }
 
-        // Выводим все нарисованные линии на экран
         bufferSource.endBatch();
 
-        // Восстанавливаем дефолтное состояние графического движка Minecraft
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
+        if (PlayerVisionMod.seeThroughBlocks) {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(true);
+        }
         poseStack.popPose();
     }
 
-    // 2. ИДЕАЛЬНО РОВНЫЕ ТРЕУГОЛЬНЫЕ СТРЕЛКИ НАПРАВЛЕНИЯ И ДИСТАНЦИЯ ВОКРУГ ПРИЦЕЛА
     @SubscribeEvent
     public void onRenderGui(RenderGuiOverlayEvent.Post event) {
         if (!PlayerVisionMod.isTagsEnabled) return;
@@ -127,11 +102,11 @@ public class RenderEventHandler {
             double distance = mc.player.distanceTo(target);
             if (distance > PlayerVisionMod.maxDistance) continue;
 
-            if (!PlayerVisionMod.targetPlayers.isEmpty() && !PlayerVisionMod.targetPlayers.contains(target.getName().getString().toLowerCase())) {
+            String key = target.getName().getString().toLowerCase();
+            if (!PlayerVisionMod.targetPlayers.isEmpty() && !PlayerVisionMod.targetPlayers.contains(key)) {
                 continue;
             }
 
-            // Математика векторов для определения направления
             Vec3 playerLook = mc.player.getLookAngle();
             Vec3 targetDir = target.position().subtract(mc.player.position()).normalize();
 
@@ -139,15 +114,13 @@ public class RenderEventHandler {
             double angleLook = Math.atan2(playerLook.z, playerLook.x);
             double relativeAngle = angleTarget - angleLook - Math.toRadians(90);
 
-            int radius = 55; // На каком расстоянии от прицела вращаются маркеры
+            int radius = 55;
             int arrowX = centerX + (int) (Math.cos(relativeAngle) * radius);
             int arrowY = centerY + (int) (Math.sin(relativeAngle) * radius);
 
             PoseStack poseStack = graphics.pose();
             poseStack.pushPose();
             poseStack.translate(arrowX, arrowY, 0);
-
-            // Вращаем координатную сетку HUD точно по вычисленному направлению к игроку
             poseStack.mulPose(Axis.ZP.rotation((float) (relativeAngle + Math.toRadians(90))));
 
             RenderSystem.enableBlend();
@@ -158,26 +131,23 @@ public class RenderEventHandler {
             BufferBuilder buf = tess.getBuilder();
             Matrix4f matrix = poseStack.last().pose();
 
-            // Отрисовка векторного треугольника острием к цели
             buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
-            buf.vertex(matrix, 0, -6, 0).color(255, 30, 30, 255).endVertex();   // Остриё стрелки
-            buf.vertex(matrix, -5, 4, 0).color(180, 20, 20, 255).endVertex();   // Левый нижний угол
-            buf.vertex(matrix, 5, 4, 0).color(180, 20, 20, 255).endVertex();    // Правый нижний угол
+            buf.vertex(matrix, 0, -6, 0).color(255, 30, 30, 255).endVertex();
+            buf.vertex(matrix, -5, 4, 0).color(180, 20, 20, 255).endVertex();
+            buf.vertex(matrix, 5, 4, 0).color(180, 20, 20, 255).endVertex();
             tess.end();
 
             RenderSystem.enableCull();
             poseStack.popPose();
 
-            // Рассчитываем координаты текста, чтобы он следовал рядом со стрелочкой
             int textX = centerX + (int) (Math.cos(relativeAngle) * (radius + 22));
             int textY = centerY + (int) (Math.sin(relativeAngle) * (radius + 22));
 
             String textName = target.getName().getString();
-            String textDist = String.format("%.1f б.", distance); // Показываем точную дистанцию в блоках
+            String textDist = String.format("%.1f б.", distance);
 
-            // Отрисовка текста
             graphics.drawCenteredString(font, textName, textX, textY - 9, 0xFFFFFF);
-            graphics.drawCenteredString(font, textDist, textX, textY + 1, 0x55FF55); // Зеленый цвет для метров
+            graphics.drawCenteredString(font, textDist, textX, textY + 1, 0x55FF55);
         }
     }
 }
