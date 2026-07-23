@@ -2,6 +2,7 @@ package org.Main.playervision;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -21,12 +22,18 @@ public class PlayerVisionMod {
     public static boolean isPlayersGlow = false;
     public static boolean ignoreSpectators = true;
     public static boolean seeThroughBlocks = true;
-    public static double maxDistance = 64.0;
+    public static int maxDistance = 128; // По умолчанию увеличен радиус
     public static boolean isTagsEnabled = false;
 
-    // Карта для хранения индивидуальных цветов игроков: Ключ - ник (lowercase), Значение - RGB цвет
+    // Новые настройки кастомизации меток
+    public static boolean showHeight = true;
+    public static float tagScale = 1.0f; // Размер метки (0.5 до 2.0)
+
     public static Map<String, Integer> playerColors = new HashMap<>();
     public static Set<String> targetPlayers = new HashSet<>();
+
+    // Локальный кэш позиций для обхода серверного лимита в 50 блоков
+    public static Map<String, Vec3> FarPositionsCache = new HashMap<>();
 
     public static final KeyMapping OPEN_MENU_KEY = new KeyMapping(
             "key.playervision.open",

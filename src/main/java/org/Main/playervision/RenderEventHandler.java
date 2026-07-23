@@ -20,15 +20,33 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 
+import java.util.Map;
+
 public class RenderEventHandler {
 
+    // Кэшируем позиции игроков каждый тик, чтобы обходить серверные лимиты дальности и приседание на Shift
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (event.phase != TickEvent.Phase.END || mc.level == null) return;
+
+        for (Player player : mc.level.players()) {
+            if (player == mc.player) continue;
+            String nameKey = player.getName().getString().toLowerCase();
+            // Записываем точные координаты, которые сервер присылает клиенту (даже на шифте)
+            PlayerVisionMod.FarPositionsCache.put(nameKey, player.position());
+        }
+    }
+
+    // 1. АБСОЛЮТНЫЙ ОБХОД СТЕН ЧЕРЕЗ КАСТОМНЫЙ ПРОХОД ЛИНИЙ (3D BOX ESP)
     @SubscribeEvent
     public void onRenderLevel(RenderLevelStageEvent event) {
-        // Переключение на этап после рендеринга блочных сущностей (наиболее стабильная точка для перекрытия буфера)
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
+        // Стадия AFTER_PARTICLES выполняется, когда все основные твердые блоки уже отрисованы
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
@@ -37,8 +55,10 @@ public class RenderEventHandler {
         PoseStack poseStack = event.getPoseStack();
 
         poseStack.pushPose();
+        // Привязываем отрисовку к позиции камеры игрока
         poseStack.translate(-camera.x, -camera.y, -camera.z);
 
+        // Отключаем проверку глубины (Z-буфер) графического движка
         if (PlayerVisionMod.seeThroughBlocks) {
             RenderSystem.disableDepthTest();
             RenderSystem.depthMask(false);
@@ -46,8 +66,10 @@ public class RenderEventHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        // Используем шейдер линий, разработанный специально для прорисовки хитбоксов и контуров
+        RenderSystem.setShader(GameRenderer::getRendertypeLinesShader);
 
+        // Создаем независимый буфер вывода
         MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
         VertexConsumer buffer = bufferSource.getBuffer(RenderType.lines());
 
@@ -56,25 +78,30 @@ public class RenderEventHandler {
             if (PlayerVisionMod.ignoreSpectators && player.isSpectator()) continue;
 
             double dist = mc.player.distanceTo(player);
-            if (dist > PlayerVisionMod.maxDistance) continue;
+            if (dist > PlayerVisionMod.maxDistance) continue; // Учет динамического радиуса до 356 блоков
 
             String key = player.getName().getString().toLowerCase();
             boolean isChosen = PlayerVisionMod.targetPlayers.contains(key);
 
             if (PlayerVisionMod.isPlayersGlow || isChosen) {
-                // Извлечение индивидуального цвета игрока из карты настроек
+                // Извлекаем кастомный цвет игрока из сохраненных настроек
                 int colorRGB = PlayerVisionMod.playerColors.getOrDefault(key, 0xFF0000);
                 float r = ((colorRGB >> 16) & 0xFF) / 255.0F;
                 float g = ((colorRGB >> 8) & 0xFF) / 255.0F;
                 float b = (colorRGB & 0xFF) / 255.0F;
 
+                // Получаем хитбокс (AABB), который автоматически сжимается по высоте, если игрок на Shift
                 AABB box = player.getBoundingBox();
+
+                // Рендерим 3D-каркас вокруг игрока
                 LevelRenderer.renderLineBox(poseStack, buffer, box, r, g, b, 1.0F);
             }
         }
 
+        // Принудительно выводим нарисованные линии поверх кадра игры
         bufferSource.endBatch();
 
+        // Возвращаем графические стейты Minecraft в исходное состояние
         if (PlayerVisionMod.seeThroughBlocks) {
             RenderSystem.enableDepthTest();
             RenderSystem.depthMask(true);
@@ -82,6 +109,7 @@ public class RenderEventHandler {
         poseStack.popPose();
     }
 
+    // 2. ДАЛЬНОБОЙНЫЕ СТРЕЛКИ С НАСТРОЙКОЙ МАСШТАБА И ВЫВОДОМ ВЫСОТЫ
     @SubscribeEvent
     public void onRenderGui(RenderGuiOverlayEvent.Post event) {
         if (!PlayerVisionMod.isTagsEnabled) return;
@@ -95,20 +123,21 @@ public class RenderEventHandler {
         int centerX = mc.getWindow().getGuiScaledWidth() / 2;
         int centerY = mc.getWindow().getGuiScaledHeight() / 2;
 
-        for (Player target : mc.level.players()) {
-            if (target == mc.player) continue;
-            if (PlayerVisionMod.ignoreSpectators && target.isSpectator()) continue;
+        // Сканируем кэш позиций для обхода серверного лимита дальности
+        for (Map.Entry<String, Vec3> entry : PlayerVisionMod.FarPositionsCache.entrySet()) {
+            String playerKey = entry.getKey();
+            Vec3 targetPos = entry.getValue();
 
-            double distance = mc.player.distanceTo(target);
+            double distance = mc.player.position().distanceTo(targetPos);
             if (distance > PlayerVisionMod.maxDistance) continue;
 
-            String key = target.getName().getString().toLowerCase();
-            if (!PlayerVisionMod.targetPlayers.isEmpty() && !PlayerVisionMod.targetPlayers.contains(key)) {
+            if (!PlayerVisionMod.targetPlayers.isEmpty() && !PlayerVisionMod.targetPlayers.contains(playerKey)) {
                 continue;
             }
 
+            // Математический расчет углов относительно взгляда
             Vec3 playerLook = mc.player.getLookAngle();
-            Vec3 targetDir = target.position().subtract(mc.player.position()).normalize();
+            Vec3 targetDir = targetPos.subtract(mc.player.position()).normalize();
 
             double angleTarget = Math.atan2(targetDir.z, targetDir.x);
             double angleLook = Math.atan2(playerLook.z, playerLook.x);
@@ -121,6 +150,9 @@ public class RenderEventHandler {
             PoseStack poseStack = graphics.pose();
             poseStack.pushPose();
             poseStack.translate(arrowX, arrowY, 0);
+
+            // Применяем кастомный размер (масштаб) меток и стрелок из подменю настроек
+            poseStack.scale(PlayerVisionMod.tagScale, PlayerVisionMod.tagScale, 1.0f);
             poseStack.mulPose(Axis.ZP.rotation((float) (relativeAngle + Math.toRadians(90))));
 
             RenderSystem.enableBlend();
@@ -131,21 +163,32 @@ public class RenderEventHandler {
             BufferBuilder buf = tess.getBuilder();
             Matrix4f matrix = poseStack.last().pose();
 
+            // Отрисовка векторного треугольника-указателя
             buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
-            buf.vertex(matrix, 0, -6, 0).color(255, 30, 30, 255).endVertex();
-            buf.vertex(matrix, -5, 4, 0).color(180, 20, 20, 255).endVertex();
-            buf.vertex(matrix, 5, 4, 0).color(180, 20, 20, 255).endVertex();
+            buf.vertex(matrix, 0, -6, 0).color(255, 30, 30, 255).endVertex();   // Наконечник стрелки
+            buf.vertex(matrix, -5, 4, 0).color(180, 20, 20, 255).endVertex();   // Левый край
+            buf.vertex(matrix, 5, 4, 0).color(180, 20, 20, 255).endVertex();    // Правый край
             tess.end();
 
             RenderSystem.enableCull();
             poseStack.popPose();
 
-            int textX = centerX + (int) (Math.cos(relativeAngle) * (radius + 22));
-            int textY = centerY + (int) (Math.sin(relativeAngle) * (radius + 22));
+            // Корректируем сдвиг текста с учетом установленного масштаба меток
+            int textX = centerX + (int) (Math.cos(relativeAngle) * (radius + (22 * PlayerVisionMod.tagScale)));
+            int textY = centerY + (int) (Math.sin(relativeAngle) * (radius + (22 * PlayerVisionMod.tagScale)));
 
-            String textName = target.getName().getString();
+            // Форматируем ник игрока с заглавной буквы
+            String textName = playerKey.substring(0, 1).toUpperCase() + playerKey.substring(1);
+
+            // Расчет относительной высоты (Y координата цели минус Y координата вашего персонажа)
+            double heightDiff = targetPos.y - mc.player.getY();
             String textDist = String.format("%.1f б.", distance);
 
+            if (PlayerVisionMod.showHeight) {
+                textDist += String.format(" (Y: %+.1f)", heightDiff); // Отобразит разницу высоты, например: +5.0 или -2.3
+            }
+
+            // Отрисовка текстовых меток
             graphics.drawCenteredString(font, textName, textX, textY - 9, 0xFFFFFF);
             graphics.drawCenteredString(font, textDist, textX, textY + 1, 0x55FF55);
         }

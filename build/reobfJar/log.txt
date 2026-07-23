@@ -138,8 +138,10 @@ Conflicting propagated mapping for org/Main/playervision/PlayerListScreen$Player
 Conflicting propagated mapping for org/Main/playervision/PlayerListScreen$PlayerList$Entry/render(Lnet/minecraft/client/gui/GuiGraphics;IIIIIIIZF)V from net/minecraft/client/gui/components/AbstractSelectionList$Entry/render(Lnet/minecraft/client/gui/GuiGraphics;IIIIIIIZF)V: render -> m_6311_
 Conflicting propagated mapping for org/Main/playervision/PlayerListScreen$PlayerList$Entry/getNarration()Lnet/minecraft/network/chat/Component; from net/minecraft/client/gui/components/ObjectSelectionList$Entry/getNarration()Lnet/minecraft/network/chat/Component;: getNarration -> m_142172_
 Conflicting propagated mapping for org/Main/playervision/PlayerListScreen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/screens/Screen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: render -> m_88315_
-Conflicting propagated mapping for org/Main/playervision/PlayerListScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
+Conflicting propagated mapping for org/Main/playervision/TagConfigScreen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/screens/Screen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: render -> m_88315_
 Conflicting propagated mapping for org/Main/playervision/VisionScreen/isPauseScreen()Z from net/minecraft/client/gui/screens/Screen/isPauseScreen()Z: isPauseScreen -> m_7043_
+Conflicting propagated mapping for org/Main/playervision/TagConfigScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
+Conflicting propagated mapping for org/Main/playervision/PlayerListScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
 Conflicting propagated mapping for org/Main/playervision/VisionScreen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/screens/Screen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: render -> m_88315_
 Conflicting propagated mapping for org/Main/playervision/VisionScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
 Conflicting propagated mapping for net/minecraft/world/entity/LivingEntity/lambda$addAdditionalSaveData$3(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/Tag;)V from net/minecraft/world/entity/player/Player/lambda$addAdditionalSaveData$3(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/Tag;)V: lambda$addAdditionalSaveData$3 -> m_219754_
@@ -158,5 +160,6 @@ Writing Output: C:\￐﾿￑ﾀ￐ﾾ￐ﾵ￐ﾺ￑ﾂ￑ﾋ\PlayerVisions\buil
   org/Main/playervision/PlayerVisionMod$ClientModEvents.class
   org/Main/playervision/PlayerVisionMod.class
   org/Main/playervision/RenderEventHandler.class
+  org/Main/playervision/TagConfigScreen.class
   org/Main/playervision/VisionScreen.class
   pack.mcmeta

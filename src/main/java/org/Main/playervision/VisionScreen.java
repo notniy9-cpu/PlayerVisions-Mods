@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 public class VisionScreen extends Screen {
 
     protected VisionScreen() {
-        super(Component.literal("Player Vision Menu"));
+        super(Component.literal("Anti-Cheat Audit Tool (ESP)"));
     }
 
     @Override
@@ -22,7 +22,7 @@ public class VisionScreen extends Screen {
                     PlayerVisionMod.isPlayersGlow = !PlayerVisionMod.isPlayersGlow;
                     button.setMessage(Component.literal("Общая подсветка: " + (PlayerVisionMod.isPlayersGlow ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 60, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 70, 200, 20).build());
 
         this.addRenderableWidget(Button.builder(
                 Component.literal("Сквозь блоки: " + (PlayerVisionMod.seeThroughBlocks ? "ВКЛ" : "ВЫКЛ")),
@@ -30,7 +30,7 @@ public class VisionScreen extends Screen {
                     PlayerVisionMod.seeThroughBlocks = !PlayerVisionMod.seeThroughBlocks;
                     button.setMessage(Component.literal("Сквозь блоки: " + (PlayerVisionMod.seeThroughBlocks ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 35, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 45, 200, 20).build());
 
         this.addRenderableWidget(Button.builder(
                 Component.literal("Метки и Дистанция: " + (PlayerVisionMod.isTagsEnabled ? "ВКЛ" : "ВЫКЛ")),
@@ -38,13 +38,27 @@ public class VisionScreen extends Screen {
                     PlayerVisionMod.isTagsEnabled = !PlayerVisionMod.isTagsEnabled;
                     button.setMessage(Component.literal("Метки: " + (PlayerVisionMod.isTagsEnabled ? "ВКЛ" : "ВЫКЛ")));
                 }
-        ).bounds(centerX - 100, centerY - 10, 200, 20).build());
+        ).bounds(centerX - 100, centerY - 20, 200, 20).build());
 
-        // Кнопка перехода в список игроков для выбора и настройки их цветов
+        // Новая кнопка перехода к детальным настройкам меток
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Настройка вида меток..."),
+                button -> this.minecraft.setScreen(new TagConfigScreen(this))
+        ).bounds(centerX - 100, centerY + 5, 200, 20).build());
+
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Дистанция работы: " + PlayerVisionMod.maxDistance + " б."),
+                button -> {
+                    PlayerVisionMod.maxDistance += 32;
+                    if (PlayerVisionMod.maxDistance > 356) PlayerVisionMod.maxDistance = 28;
+                    button.setMessage(Component.literal("Дистанция работы: " + PlayerVisionMod.maxDistance + " б."));
+                }
+        ).bounds(centerX - 100, centerY + 30, 200, 20).build());
+
         this.addRenderableWidget(Button.builder(
                 Component.literal("Управление игроками и цветом"),
                 button -> this.minecraft.setScreen(new PlayerListScreen(this))
-        ).bounds(centerX - 100, centerY + 15, 200, 20).build());
+        ).bounds(centerX - 100, centerY + 55, 200, 20).build());
     }
 
     @Override
