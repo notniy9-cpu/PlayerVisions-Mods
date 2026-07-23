@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Specification-Title: playervision
+Specification-Vendor: 
+Specification-Version: 1
+Implementation-Title: x-ray
+Implementation-Version: 1.0
+Implementation-Vendor: 
+Implementation-Timestamp: 2026-07-23T22:40:10+0600
+
